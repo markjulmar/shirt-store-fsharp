@@ -1,4 +1,4 @@
-﻿namespace XamarinStore
+namespace XamarinStore
 
 open System
 open MonoTouch.UIKit
@@ -50,10 +50,8 @@ type StringSelectionCell(viewForPicker:UIView) as this =
         with get () = this.DetailTextLabel.Text
         and set value = this.DetailTextLabel.Text <- value
 
-
-
     member this.Tap () =
         // Don't show the picker when we don't have options.
         if this.Items.Count() <> 1 then
             picker.SelectedIndex <- this.Items.ToList().IndexOf this.DetailText
-            picker.ShowPicker viewForPicker
+            picker.ShowPicker() 

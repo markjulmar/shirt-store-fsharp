@@ -1,4 +1,4 @@
-﻿namespace XamarinStore
+namespace XamarinStore
 
 open System
 open System.Linq
@@ -30,7 +30,7 @@ and [<AllowNullLiteralAttribute>] StringUIPicker() =
 
     let mutable currentIndex = 0
     let mutable items :string array = [||]
-    let mutable sheet : UIActionSheet = null
+    let mutable sheet : UIView = null
 
     member this.Items
         with get () = items :> string seq
@@ -52,19 +52,39 @@ and [<AllowNullLiteralAttribute>] StringUIPicker() =
         and set value = if items.Contains(value) then
                             currentIndex <- Array.FindIndex(items, fun x-> x = value)
 
-    member this.ShowPicker(viewForPicker : UIView) =
-        sheet <- new UIActionSheet()
+    member this.ShowPicker() =
+        sheet <- new UIView()
+        sheet.BackgroundColor <- UIColor.Clear
 
-        sheet.AddSubview this
+        let parentView = UIApplication.SharedApplication.KeyWindow.RootViewController.View
+
+        // Creates a transparent grey background who catches the touch actions (and add more style). 
+        let dimBackgroundView = new UIView (parentView.Bounds)
+        dimBackgroundView.BackgroundColor <- UIColor.Gray.ColorWithAlpha (0.5f)
+
+        let titleBarHeight = 44.0f
+        let actionSheetSize = new SizeF (parentView.Frame.Width, this.Frame.Height + titleBarHeight)
+        let actionSheetFrameHidden = new RectangleF (0.0f, parentView.Frame.Height, actionSheetSize.Width, actionSheetSize.Height);
+        let actionSheetFrameDisplayed = new RectangleF (0.0f, parentView.Frame.Height - actionSheetSize.Height, actionSheetSize.Width, actionSheetSize.Height);
+
+        // Hide the action sheet before we animate it so it comes from the bottom.
+        sheet.Frame <- actionSheetFrameHidden;
+        this.Frame <- new RectangleF (0.0f, 1.0f, actionSheetSize.Width, actionSheetSize.Height - titleBarHeight);
 
         let doneButton = new UIBarButtonItem(UIBarButtonSystemItem.Done)
-        doneButton.Clicked.Add(fun _ -> sheet.DismissWithClickedButtonIndex (0, true))
-        let toolbarPicker = new UIToolbar (new RectangleF (0.0f, 0.0f, viewForPicker.Frame.Width, 44.0f))
+
+        doneButton.Clicked.Add(fun evArgs -> UIView.Animate(0.25, (fun () -> sheet.Frame <- actionSheetFrameHidden), (fun () -> (dimBackgroundView.RemoveFromSuperview() ; sheet.RemoveFromSuperview()))))
+
+        let toolbarPicker = new UIToolbar (new RectangleF (0.0f, 0.0f, sheet.Frame.Width, titleBarHeight))
+        toolbarPicker.ClipsToBounds <- true
         toolbarPicker.Items <- [|new UIBarButtonItem (UIBarButtonSystemItem.FlexibleSpace); doneButton|]
         toolbarPicker.BarTintColor <- this.BackgroundColor
 
-        sheet.AddSubviews toolbarPicker
+        // Creates a blur background using the toolbar trick.
+        let toolbarBg = new UIToolbar (new RectangleF (0.f, 0.f, sheet.Frame.Width, sheet.Frame.Height))
+        toolbarBg.ClipsToBounds <- true
 
-        sheet.BackgroundColor <- UIColor.Clear
-        sheet.ShowInView viewForPicker
-        UIView.Animate(0.25, fun () -> sheet.Bounds <- new RectangleF (0.0f, 0.0f, viewForPicker.Frame.Width, 485.0f))
+        sheet.AddSubviews(toolbarBg, this, toolbarPicker)
+        parentView.AddSubviews(dimBackgroundView, sheet)
+        parentView.BringSubviewToFront (sheet)
+        UIView.Animate(0.25, fun () -> sheet.Frame <- actionSheetFrameDisplayed)
